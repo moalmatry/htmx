@@ -2,6 +2,19 @@ import express from "express";
 
 const courseGoals = [];
 
+function renderGoalListItem(id, text) {
+  return `
+            <li id="goal-${id}">
+              <span>${text}</span>
+              <button 
+              hx-target="#goal-${id}"
+              hx-delete="/goals/${id}"
+              hx-confirm="Are you sure you want to delete this goal?"
+              >Remove</button>
+            </li>
+          `;
+}
+
 const app = express();
 
 app.use(express.urlencoded({ extended: false }));
@@ -26,7 +39,10 @@ app.get("/", (req, res) => {
             id="goal-form" 
             hx-post="/goals" 
             hx-target="#goals"
-            hx-swap="beforeend">
+            hx-swap="beforeend"
+            hx-on::after-request="document.querySelector('form').reset()"
+            hx-disabled-elt="button"
+            >
             <div>
               <label htmlFor="goal">Goal</label>
               <input type="text" id="goal" name="goal" />
@@ -35,17 +51,8 @@ app.get("/", (req, res) => {
           </form>
         </section>
         <section>
-          <ul id="goals">
-          ${courseGoals
-            .map(
-              (goal, index) => `
-            <li id="goal-${index}">
-              <span>${goal}</span>
-              <button hx-delete="/goals/${index}">Remove</button>
-            </li>
-          `,
-            )
-            .join("")}
+          <ul id="goals" hx-swap="outerHTML">
+          ${courseGoals.map((goal) => renderGoalListItem(goal.id, goal.text)).join("")}
           </ul>
         </section>
       </main>
@@ -56,19 +63,18 @@ app.get("/", (req, res) => {
 
 app.post("/goals", (req, res) => {
   const goalText = req.body.goal;
-  courseGoals.push(goalText);
-  // res.redirect('/');
-  res.send(`
-    <li id="goal-${courseGoals.length - 1}">
-      <span>${goalText}</span>
-      <button>Remove</button>
-    </li>
-  `);
+  const id = new Date().getTime().toString();
+  courseGoals.push({ text: goalText, id: id });
+  setTimeout(() => {
+    res.send(renderGoalListItem(id, goalText));
+  }, 1000);
 });
 
-app.delete("/goals/:idx", (req, res) => {
-  const index = req.params.idx;
+app.delete("/goals/:id", (req, res) => {
+  const id = req.params.id;
+  const index = courseGoals.findIndex((goal) => goal.id === id);
   courseGoals.splice(index, 1);
+  res.send();
 });
 
 app.listen(3000);
